@@ -65,8 +65,8 @@ public class CheckersGame {
         if (isPlayer1Turn) {
 
             if ((player1Pieces & startMask) != 0) {
-                player1Pieces &= ~startMask; // Remove piece from start
-                player1Pieces |= endMask; // Move piece to end
+                player1Pieces &= ~startMask;
+                player1Pieces |= endMask; 
             } else if ((player1Kings & startMask) != 0) {
                 player1Kings &= ~startMask;
                 player1Kings |= endMask;
