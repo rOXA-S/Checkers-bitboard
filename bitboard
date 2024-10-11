@@ -1,0 +1,203 @@
+import java.util.Scanner;
+
+public class CheckersGame {
+
+    private long player1Pieces;
+    private long player1Kings;
+    private long player2Pieces;
+    private long player2Kings;
+    private boolean isPlayer1Turn;
+
+    public CheckersGame() {
+        initializeBoard();
+        isPlayer1Turn = true;
+    }
+
+    private void initializeBoard() {
+
+        player1Pieces = 0xFFF;
+        player1Kings = 0L;
+        player2Pieces = 0xFFF0000000000L;
+        player2Kings = 0L; 
+    }
+
+    public void displayBoard() {
+        System.out.println("Player 1: normal pieces = P, kings = K");
+        System.out.println("Player 2: normal pieces = p, kings = k");
+        System.out.println(" 0 1 2 3 4 5 6 7");
+
+        for (int row = 0; row < 8; row++) {
+            System.out.print(row + " ");
+            for (int col = 0; col < 8; col++) {
+                int position = row * 8 + col;
+                long mask = 1L << position;
+
+                if ((player1Pieces & mask) != 0) {
+                    System.out.print("P ");
+                } else if ((player1Kings & mask) != 0) {
+                    System.out.print("K ");
+                } else if ((player2Pieces & mask) != 0) {
+                    System.out.print("p ");
+                } else if ((player2Kings & mask) != 0) {
+                    System.out.print("k ");
+                } else {
+                    System.out.print(". ");
+                }
+            }
+            System.out.println();
+        }
+    }
+
+    public boolean move(int startRow, int startCol, int endRow, int endCol) {
+        int startPos = startRow * 8 + startCol;
+        int endPos = endRow * 8 + endCol;
+
+        long startMask = 1L << startPos;
+        long endMask = 1L << endPos;
+
+
+        if (!isMoveValid(startRow, startCol, endRow, endCol)) {
+            System.out.println("Invalid move");
+            return false;
+        }
+
+
+        if (isPlayer1Turn) {
+
+            if ((player1Pieces & startMask) != 0) {
+                player1Pieces &= ~startMask; // Remove piece from start
+                player1Pieces |= endMask; // Move piece to end
+            } else if ((player1Kings & startMask) != 0) {
+                player1Kings &= ~startMask;
+                player1Kings |= endMask;
+            }
+        } else {
+
+            if ((player2Pieces & startMask) != 0) {
+                player2Pieces &= ~startMask;
+                player2Pieces |= endMask;
+            } else if ((player2Kings & startMask) != 0) {
+                player2Kings &= ~startMask;
+                player2Kings |= endMask;
+            }
+        }
+
+
+        if (Math.abs(startRow - endRow) == 2) {
+            int captureRow = (startRow + endRow) / 2;
+            int captureCol = (startCol + endCol) / 2;
+            int capturePos = captureRow * 8 + captureCol;
+            long captureMask = 1L << capturePos;
+
+
+            if ((player1Pieces & captureMask) != 0) {
+                player1Pieces &= ~captureMask;
+            } else if ((player1Kings & captureMask) != 0) {
+                player1Kings &= ~captureMask;
+            } else if ((player2Pieces & captureMask) != 0) {
+                player2Pieces &= ~captureMask;
+            } else if ((player2Kings & captureMask) != 0) {
+                player2Kings &= ~captureMask;
+            }
+        }
+
+
+        if (isPlayer1Turn && endRow == 7) {
+            player1Pieces &= ~endMask;
+            player1Kings |= endMask;
+        } else if (!isPlayer1Turn && endRow == 0) {
+            player2Pieces &= ~endMask;
+            player2Kings |= endMask;
+        }
+
+        isPlayer1Turn = !isPlayer1Turn;
+        return true;
+    }
+
+    private boolean isMoveValid(int startRow, int startCol, int endRow, int endCol) {
+        int startPos = startRow * 8 + startCol;
+        long startMask = 1L << startPos;
+
+
+        if (isPlayer1Turn && ((player1Pieces & startMask) == 0 && (player1Kings & startMask) == 0)) {
+            return false;
+        } else if (!isPlayer1Turn && ((player2Pieces & startMask) == 0 && (player2Kings & startMask) == 0)) {
+            return false;
+        }
+
+
+        int endPos = endRow * 8 + endCol;
+        long endMask = 1L << endPos;
+
+        if ((player1Pieces & endMask) != 0 || (player1Kings & endMask) != 0 ||
+                (player2Pieces & endMask) != 0 || (player2Kings & endMask) != 0) {
+            return false;
+        }
+
+
+        if (isPlayer1Turn) {
+            if (endRow - startRow == 1 && Math.abs(endCol - startCol) == 1) {
+                return true; // Regular move
+            } else if (endRow - startRow == 2 && Math.abs(endCol - startCol) == 2) {
+                return isCaptureValid(startRow, startCol, endRow, endCol);
+            }
+        } else {
+            if (startRow - endRow == 1 && Math.abs(startCol - endCol) == 1) {
+                return true; // Regular move
+            } else if (startRow - endRow == 2 && Math.abs(startCol - endCol) == 2) {
+                return isCaptureValid(startRow, startCol, endRow, endCol);
+            }
+        }
+
+
+        long kingMask = isPlayer1Turn ? player1Kings : player2Kings;
+        if ((kingMask & startMask) != 0) {
+            if (Math.abs(endRow - startRow) == 1 && Math.abs(endCol - startCol) == 1) {
+                return true; // Regular king move
+            } else if (Math.abs(endRow - startRow) == 2 && Math.abs(endCol - startCol) == 2) {
+                return isCaptureValid(startRow, startCol, endRow, endCol);
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isCaptureValid(int startRow, int startCol, int endRow, int endCol) {
+        int captureRow = (startRow + endRow) / 2;
+        int captureCol = (startCol + endCol) / 2;
+        int capturePos = captureRow * 8 + captureCol;
+        long captureMask = 1L << capturePos;
+
+        if (isPlayer1Turn) {
+            return (player2Pieces & captureMask) != 0 || (player2Kings & captureMask) != 0;
+        } else {
+            return (player1Pieces & captureMask) != 0 || (player1Kings & captureMask) != 0;
+        }
+    }
+
+    public boolean isGameOver() {
+        return (player1Pieces | player1Kings) == 0 || (player2Pieces | player2Kings) == 0;
+    }
+
+    public static void main(String[] args) {
+        CheckersGame game = new CheckersGame();
+        Scanner scanner = new Scanner(System.in);
+
+        while (!game.isGameOver()) {
+            game.displayBoard();
+            System.out.println("Enter move (startRow startCol endRow endCol): ");
+            int startRow = scanner.nextInt();
+            int startCol = scanner.nextInt();
+            int endRow = scanner.nextInt();
+            int endCol = scanner.nextInt();
+
+            if (game.move(startRow, startCol, endRow, endCol)) {
+                System.out.println("Move successful!");
+            } else {
+                System.out.println("Invalid move, try again.");
+            }
+        }
+
+        System.out.println("Game Over!");
+    }
+}
